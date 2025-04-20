@@ -78,9 +78,20 @@
       return `
         <div>
           <div class="expandable" onclick="toggleStack('${blockId}')">${summary}</div>
-          <div id="${blockId}" class="stacktrace"><code>${stack}</code></div>
+          <div id="${blockId}" class="stacktrace"><button onClick="copyCode('${blockId}')">Copy</button><br /><code>${stack}</code></div>
         </div>
       `;
+    }
+
+    function copyCode(parentDivID) {
+      const parentDiv = document.getElementById(parentDivID);
+      const codeBlock = parentDiv.querySelector('code');
+      const range = document.createRange();
+      range.selectNode(codeBlock);
+      window.getSelection().removeAllRanges(); // Clear any current selections
+      window.getSelection().addRange(range); // Select the text
+      document.execCommand('copy'); // Copy the selected text
+      window.getSelection().removeAllRanges(); // Deselect the text
     }
 
     function toggleStack(id) {
