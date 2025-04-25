@@ -17,7 +17,9 @@
     .delete { background: #ffd0d0; }
     .expandable { cursor: pointer; color: blue; text-decoration: underline; }
     .stacktrace { display: none; font-size: 0.9em; color: #555; margin-top: 0.5rem; white-space: pre-wrap; }
-  </style>
+  </style>  
+  <script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
   <h1>Desync Log Viewer</h1>
@@ -41,8 +43,29 @@
     <table class="diff-table" id="diffOutput"></table>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
   <script>
+
+    function decompressGzipBase64(base64) {
+      const binaryString = atob(base64);
+      const charData = Array.from(binaryString, c => c.charCodeAt(0));
+      const byteArray = new Uint8Array(charData);
+      const decompressed = pako.ungzip(byteArray, { to: 'string' });
+      return decompressed;
+    }
+
+    function isBase64(str) {
+      if (typeof str !== 'string') return false;
+
+      // Base64 strings should have a length that's a multiple of 4
+      if (str.length % 4 !== 0) return false;
+
+      // Regex to match valid Base64 characters + optional padding
+      const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+
+      return base64Regex.test(str);
+    }
+
+
     function cleanLine(line) {
       return line.replace(/^\[.*?\]\s*/, '').replace(/<[^>]+>/g, '').trim();
     }
@@ -102,7 +125,7 @@
     function createSharedHistory(lines) {
       const sharedHistory = document.getElementById('sharedHistory');
       const events = parseEvents(lines);
-      console.log(lines, events);
+      // console.log(lines, events);
       let innerHTML = '<table class="diff-table">';
       let eventCounter = 0;
       for (let event of events) {
@@ -169,7 +192,17 @@
     }
 
     function processLog() {
-      const input = document.getElementById('logInput').value;
+      let input = document.getElementById('logInput').value;
+      if (isBase64(input)) {
+        try {
+          const decompressed = decompressGzipBase64(input);
+          console.log("Size before: " + input.length + " Size after: " + decompressed.length);
+          input = document.getElementById('logInput').value = decompressed;
+        } catch (e) {
+          document.getElementById('error').innerText = 'Failed to decompress: ' + e;
+          return;
+        }
+      }
       const lines = input.split(/\r?\n/);
       const errorBox = document.getElementById('error');
       try {
